@@ -1,0 +1,383 @@
+# End-to-End Cloud Data Engineering Pipeline
+### Real-time weather data pipeline for 10 Indian cities using OpenWeatherMap, Apache Airflow, dbt, and cloud storage
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![Airflow](https://img.shields.io/badge/Apache_Airflow-2.9-017CEE?logo=apacheairflow&logoColor=white)
+![dbt](https://img.shields.io/badge/dbt-core-FF694B?logo=dbt&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+---
+
+## Overview
+
+This project is a production-style, end-to-end data engineering pipeline that extracts weather data from the [OpenWeatherMap API](https://openweathermap.org/api) for 10 major Indian cities every hour, lands raw JSON to a cloud data lake, transforms it using dbt, and serves it via a BI dashboard.
+
+Built as a portfolio project demonstrating real-world data engineering practices: orchestration, data quality checks, CI/CD, partitioned storage, and layered transformations.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Source Layer                             │
+│   OpenWeatherMap API  (/weather + /forecast endpoints)          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ JSON (hourly, 10 cities)
+┌────────────────────────────▼────────────────────────────────────┐
+│                      Ingestion Layer                            │
+│   Apache Airflow DAG  →  extract + validate + land to lake      │
+└──────────────┬──────────────────────────────┬───────────────────┘
+               │                              │
+┌──────────────▼──────────┐    ┌──────────────▼──────────────────┐
+│      Data Lake          │    │         Data Warehouse           │
+│   S3 / GCS / Local      │    │    BigQuery / Snowflake          │
+│   raw/owm/current/      │    │    (loaded from lake)            │
+│   raw/owm/forecast/     │    │                                  │
+└─────────────────────────┘    └──────────────┬───────────────────┘
+                                              │
+                               ┌──────────────▼───────────────────┐
+                               │      Transformation Layer        │
+                               │   dbt: staging → mart models     │
+                               │   data quality tests             │
+                               └──────────────┬───────────────────┘
+                                              │
+                               ┌──────────────▼───────────────────┐
+                               │        Dashboard / BI            │
+                               │   Metabase / Apache Superset     │
+                               └──────────────────────────────────┘
+```
+
+### Data flow per run
+1. Airflow triggers at the top of every hour
+2. Pre-flight check validates the API key is live
+3. Current weather and 5-day forecast extracted in parallel for all 10 cities
+4. Each payload validated (schema, temperature range, row count)
+5. Raw JSON landed to `raw/owm/{endpoint}/city={name}/year=/month=/day=/hour/`
+6. Quality gate asserts all 10 cities succeeded before marking run complete
+7. Slack/email alert fires if any task fails
+
+---
+
+## Cities covered
+
+| City | State |
+|------|-------|
+| Delhi | NCT |
+| Mumbai | Maharashtra |
+| Bengaluru | Karnataka |
+| Prayagraj | Uttar Pradesh |
+| Chennai | Tamil Nadu |
+| Kolkata | West Bengal |
+| Hyderabad | Telangana |
+| Pune | Maharashtra |
+| Jaipur | Rajasthan |
+| Ahmedabad | Gujarat |
+
+---
+
+## Tech Stack
+
+| Layer | Tool |
+|-------|------|
+| Orchestration | Apache Airflow 2.9 |
+| Extraction | Python 3.10+, `requests` |
+| Storage | AWS S3 / GCS / Local |
+| Warehouse | BigQuery / Snowflake |
+| Transformation | dbt Core |
+| Data quality | Great Expectations |
+| Containerisation | Docker + Docker Compose |
+| CI/CD | GitHub Actions |
+| Testing | pytest |
+| Dashboard | Metabase / Apache Superset |
+
+---
+
+## Project Structure
+
+```
+end-to-end-weather-pipeline/
+│
+├── dags/
+│   └── weather_pipeline_dag.py     # Airflow DAG (5 tasks, hourly)
+│
+├── src/
+│   └── extract_weather.py          # Extraction, validation, storage logic
+│
+├── dbt/                            # (week 3) dbt transformation project
+│   ├── models/
+│   │   ├── staging/                # stg_current_weather, stg_forecast
+│   │   ├── intermediate/           # int_weather_combined
+│   │   └── mart/                   # mart_city_weather_daily
+│   ├── tests/
+│   └── dbt_project.yml
+│
+├── tests/
+│   └── test_extract_weather.py     # 13 pytest unit tests
+│
+├── docs/
+│   └── architecture.png            # Architecture diagram
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions: lint + test on push
+│
+├── data/
+│   └── raw/                        # Local storage output (dev/testing)
+│
+├── config/
+│   └── config.py                   # Centralised config constants
+│
+├── docker-compose.yml              # Airflow + Postgres local setup
+├── requirements.txt
+├── .env.example                    # Template — never commit .env
+├── .gitignore
+├── Makefile                        # Common commands
+└── README.md
+```
+
+---
+
+## Quickstart
+
+### Prerequisites
+
+- Python 3.10+
+- Docker Desktop (running)
+- Git
+- A free [OpenWeatherMap API key](https://openweathermap.org/api) (free tier: 1,000 calls/day)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/your-username/end-to-end-weather-pipeline.git
+cd end-to-end-weather-pipeline
+```
+
+### 2. Create virtual environment
+
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# Mac / Linux
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in your values:
+
+```env
+OWM_API_KEY=your_openweathermap_api_key
+STORAGE_BACKEND=local          # "local" | "s3" | "gcs"
+LOCAL_OUTPUT_DIR=data/raw
+```
+
+> **Note:** New OWM API keys take up to 2 hours to activate after signup.
+
+### 5. Test the extractor locally
+
+```bash
+# Dry run — prints JSON to terminal, no upload
+python src/extract_weather.py --dry-run --city Delhi
+
+# Run all cities locally
+python src/extract_weather.py
+```
+
+### 6. Run the tests
+
+```bash
+pytest tests/ -v
+```
+
+### 7. Start Airflow with Docker
+
+```bash
+# First time only — initialises DB and creates admin user
+docker-compose up airflow-init
+
+# Start all services
+docker-compose up -d
+```
+
+Open [http://localhost:8080](http://localhost:8080) and log in:
+- Username: `admin`
+- Password: `admin`
+
+Enable the `weather_pipeline` DAG and hit the play button. It runs every hour automatically.
+
+---
+
+## Airflow DAG
+
+The DAG (`weather_pipeline`) contains 5 tasks:
+
+```
+start
+  └── validate_api_key
+        ├── extract_current   ─┐
+        └── extract_forecast  ─┴── quality_checks
+                                   └── notify_on_failure  (only on failure)
+```
+
+| Task | What it does |
+|------|-------------|
+| `validate_api_key` | Test call to OWM — fails fast if key is invalid |
+| `extract_current` | Fetch `/weather` for all 10 cities, validate, land to lake |
+| `extract_forecast` | Fetch `/forecast` for all 10 cities, validate, land to lake |
+| `quality_checks` | Assert all 10 cities succeeded in both endpoints |
+| `notify_on_failure` | Fires Slack/email alert on any upstream failure |
+
+**Schedule:** `0 * * * *` (top of every hour)  
+**Retries:** 2 retries with 5-minute delay  
+**Dry run:** Trigger with config `{"dry_run": true}` to test without uploading
+
+---
+
+## Storage layout
+
+Raw files land with Hive-style partitioning for efficient downstream querying:
+
+```
+data/raw/
+└── owm/
+    ├── current/
+    │   └── city=delhi/
+    │       └── year=2026/month=06/day=04/hour=10/
+    │           └── delhi_20260604T100000Z.json
+    └── forecast/
+        └── city=delhi/
+            └── year=2026/month=06/day=04/hour=10/
+                └── delhi_20260604T100000Z.json
+```
+
+Each file is the raw API response with two extra fields added by the pipeline:
+- `ingested_at` — UTC timestamp of when the pipeline ran
+- `pipeline_city_query` — the city name used in the API call
+
+---
+
+## dbt Models (Week 3)
+
+Transformations follow the staging → intermediate → mart pattern:
+
+```
+staging/
+  stg_current_weather.sql     -- typed, renamed columns from raw
+  stg_forecast.sql            -- exploded forecast intervals
+
+intermediate/
+  int_weather_combined.sql    -- joins current + forecast by city + date
+
+mart/
+  mart_city_weather_daily.sql -- daily aggregates: avg temp, max wind, etc.
+```
+
+Run dbt:
+
+```bash
+dbt run
+dbt test
+dbt docs generate && dbt docs serve
+```
+
+---
+
+## CI/CD
+
+GitHub Actions runs on every push to `main`:
+
+```yaml
+on: [push, pull_request]
+jobs:
+  test:
+    - Lint with ruff
+    - Run pytest
+    - dbt compile + dbt test
+```
+
+Add the badge to your README once the workflow is live:
+
+```
+![CI](https://github.com/your-username/end-to-end-weather-pipeline/actions/workflows/ci.yml/badge.svg)
+```
+
+---
+
+## Environment variables reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OWM_API_KEY` | Yes | OpenWeatherMap API key |
+| `STORAGE_BACKEND` | Yes | `local`, `s3`, or `gcs` |
+| `LOCAL_OUTPUT_DIR` | For local | Path to write raw files |
+| `S3_BUCKET` | For S3 | AWS S3 bucket name |
+| `GCS_BUCKET` | For GCS | GCP bucket name |
+| `SLACK_WEBHOOK_URL` | Optional | Slack incoming webhook for alerts |
+
+---
+
+## Sample output
+
+A single current weather record for Delhi:
+
+```json
+{
+  "name": "Delhi",
+  "dt": 1717488000,
+  "coord": { "lat": 28.66, "lon": 77.23 },
+  "main": {
+    "temp": 38.5,
+    "feels_like": 37.1,
+    "temp_min": 36.0,
+    "temp_max": 40.0,
+    "humidity": 22,
+    "pressure": 1002
+  },
+  "weather": [{ "main": "Clear", "description": "clear sky" }],
+  "wind": { "speed": 4.1, "deg": 270 },
+  "ingested_at": "2026-06-04T10:00:00+00:00",
+  "pipeline_city_query": "Delhi"
+}
+```
+
+---
+
+## Roadmap
+
+- [x] Extraction layer — OpenWeatherMap API
+- [x] Airflow DAG with parallel tasks and quality checks
+- [ ] dbt transformation models
+- [ ] Great Expectations data quality suite
+- [ ] Load to BigQuery / Snowflake
+- [ ] Metabase / Superset dashboard
+- [ ] GitHub Actions CI/CD
+- [ ] Terraform for cloud infrastructure
+
+---
+
+## License
+
+MIT — free to use, fork, and build on.
+
+---
+
+## Author
+
+Built by **[Prateek kharwar]** as part of a cloud data engineering portfolio.  
+Connect on [LinkedIn](https://www.linkedin.com/in/prateek-kharwar-a7764b270/) · [GitHub](https://github.com/Khprateek)
