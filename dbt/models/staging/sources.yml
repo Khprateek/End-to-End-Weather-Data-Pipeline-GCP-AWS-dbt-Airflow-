@@ -1,0 +1,70 @@
+version: 2
+
+sources:
+  - name: raw_weather
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw_weather
+    description: "Raw weather data landed from OpenWeatherMap API by the Airflow ingestion pipeline."
+    tables:
+      - name: current_weather
+        description: "Raw current weather snapshots, one row per city per hour."
+        columns:
+          - name: city_name
+            description: "City name returned by OWM API."
+          - name: dt
+            description: "Unix timestamp of the observation (UTC)."
+          - name: temp
+            description: "Temperature in Celsius."
+          - name: ingested_at
+            description: "UTC timestamp when the pipeline landed this row."
+
+      - name: forecast_weather
+        description: "Raw 5-day / 3-hour forecast intervals, one row per interval per city per ingestion run."
+        columns:
+          - name: city_name
+            description: "City name returned by OWM API."
+          - name: dt
+            description: "Unix timestamp of the forecast interval (UTC)."
+          - name: dt_txt
+            description: "Human-readable forecast interval string from OWM."
+          - name: pop
+            description: "Probability of precipitation (0.0 to 1.0)."
+          - name: ingested_at
+            description: "UTC timestamp when the pipeline landed this row."
+
+models:
+  - name: stg_current_weather
+    description: "Cleaned and typed current weather snapshots. One row per city per hourly run."
+    columns:
+      - name: city_name
+        description: "City name."
+        tests:
+          - not_null
+      - name: observed_at_utc
+        description: "Observation timestamp in UTC."
+        tests:
+          - not_null
+      - name: temp_c
+        description: "Temperature in Celsius."
+        tests:
+          - not_null
+      - name: humidity_pct
+        description: "Relative humidity percentage (0–100)."
+        tests:
+          - not_null
+
+  - name: stg_forecast_weather
+    description: "Cleaned forecast intervals. One row per 3-hour interval per city."
+    columns:
+      - name: city_name
+        description: "City name."
+        tests:
+          - not_null
+      - name: forecast_at_utc
+        description: "Forecast interval timestamp in UTC."
+        tests:
+          - not_null
+      - name: precip_probability
+        description: "Precipitation probability (0.0–1.0)."
+        tests:
+          - not_null

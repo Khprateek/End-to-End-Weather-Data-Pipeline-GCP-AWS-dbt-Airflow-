@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: mart_city_weather_daily
+    description: >
+      Daily weather summary per city. Aggregated from hourly current weather
+      snapshots. One row per city per day. Primary table for the Looker Studio
+      dashboard.
+    columns:
+      - name: city_name
+        description: "City name."
+        tests:
+          - not_null
+      - name: weather_date
+        description: "Date of the weather observation (UTC)."
+        tests:
+          - not_null
+      - name: avg_temp_c
+        description: "Average temperature in Celsius for the day."
+        tests:
+          - not_null
+      - name: avg_humidity_pct
+        description: "Average relative humidity percentage."
+        tests:
+          - not_null
+      - name: dominant_weather
+        description: "Most frequent weather category observed during the day."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Clear", "Clouds", "Rain", "Drizzle", "Thunderstorm",
+                       "Snow", "Mist", "Smoke", "Haze", "Dust", "Fog",
+                       "Sand", "Ash", "Squall", "Tornado"]
+
+  - name: mart_city_comparison
+    description: >
+      Latest weather snapshot for all 10 cities side by side.
+      Each city appears exactly once (most recent observation).
+    columns:
+      - name: city_name
+        description: "City name."
+        tests:
+          - not_null
+          - unique
+      - name: temp_c
+        description: "Current temperature in Celsius."
+        tests:
+          - not_null
+      - name: temp_rank_hottest
+        description: "Rank of city by temperature (1 = hottest)."
+        tests:
+          - not_null
+
+  - name: mart_forecast_next24h
+    description: >
+      Next 24 hours of 3-hourly forecast intervals per city.
+      Refreshed on each dbt run.
+    columns:
+      - name: city_name
+        description: "City name."
+        tests:
+          - not_null
+      - name: forecast_at_utc
+        description: "Forecast interval timestamp (UTC)."
+        tests:
+          - not_null
+      - name: precip_probability_pct
+        description: "Precipitation probability as a percentage (0–100)."
+        tests:
+          - not_null
