@@ -19,12 +19,12 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    # Pass your .env variables into every Airflow container
+    # Pass .env variables into every Airflow container
     OWM_API_KEY: ${OWM_API_KEY}
     STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
     LOCAL_OUTPUT_DIR: /opt/airflow/data/raw
   volumes:
-    - ./dags:/opt/airflow/dags          # your DAG file
+    - ./dags:/opt/airflow/dags          # DAG file
     - ./src:/opt/airflow/src            # extract_weather.py
     - ./data:/opt/airflow/data          # raw output lands here
     - ./logs:/opt/airflow/logs
@@ -48,15 +48,7 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: >
-      bash -c "airflow db migrate &&
-               airflow users create
-                 --username admin
-                 --password admin
-                 --firstname Admin
-                 --lastname User
-                 --role Admin
-                 --email admin@example.com"
+    command: bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com"
     restart: "no"
 
   airflow-webserver:

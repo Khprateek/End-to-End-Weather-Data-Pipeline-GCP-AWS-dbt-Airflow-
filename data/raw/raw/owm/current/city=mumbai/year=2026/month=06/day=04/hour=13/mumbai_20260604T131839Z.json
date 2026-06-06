@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 72.8479,
+    "lat": 19.0144
+  },
+  "weather": [
+    {
+      "id": 800,
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 30.62,
+    "feels_like": 37.62,
+    "temp_min": 30.62,
+    "temp_max": 30.62,
+    "pressure": 1004,
+    "humidity": 79,
+    "sea_level": 1004,
+    "grnd_level": 1003
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 7.29,
+    "deg": 222,
+    "gust": 7.69
+  },
+  "clouds": {
+    "all": 1
+  },
+  "dt": 1780578608,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1780533031,
+    "sunset": 1780580612
+  },
+  "timezone": 19800,
+  "id": 1275339,
+  "name": "Mumbai",
+  "cod": 200,
+  "ingested_at": "2026-06-04T13:18:39.423951+00:00",
+  "pipeline_city_query": "Mumbai"
+}
