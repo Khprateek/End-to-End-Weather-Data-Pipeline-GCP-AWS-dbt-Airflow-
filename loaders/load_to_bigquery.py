@@ -1,16 +1,16 @@
 """
 load_to_bigquery.py
 -------------------
-Loads raw weather JSON files from local storage / GCS into BigQuery.
+Loads raw weather JSON files into BigQuery using BATCH loading
+(load_table_from_json) — works on the free tier.
 
-Two tables are created / appended to in the `raw_weather` dataset:
-  - raw_weather.current_weather   (one row per city per hour)
-  - raw_weather.forecast_weather  (one row per forecast interval per city per hour)
+Streaming inserts (insert_rows_json) are NOT allowed on the free tier.
+This loader writes rows via the Jobs API instead, which is always free.
 
 Usage:
-    python loaders/load_to_bigquery.py                  # load all files in data/raw/
-    python loaders/load_to_bigquery.py --date 2026-06-04  # load a specific date
-    python loaders/load_to_bigquery.py --dry-run          # print rows, skip upload
+    python loaders/load_to_bigquery.py                    # load all files
+    python loaders/load_to_bigquery.py --date 2026-06-06  # specific date
+    python loaders/load_to_bigquery.py --dry-run          # print, no upload
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ logger = logging.getLogger("bq_loader")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-PROJECT_ID      = os.getenv("GCP_PROJECT_ID", "")
-DATASET_RAW     = os.getenv("BIGQUERY_DATASET_RAW", "raw_weather")
+PROJECT_ID       = os.getenv("GCP_PROJECT_ID", "")
+DATASET_RAW      = os.getenv("BIGQUERY_DATASET_RAW", "raw_weather")
 CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcp-credentials.json")
 LOCAL_OUTPUT_DIR = os.getenv("LOCAL_OUTPUT_DIR", "data/raw")
 
@@ -50,74 +50,69 @@ TABLE_FORECAST = f"{PROJECT_ID}.{DATASET_RAW}.forecast_weather"
 # ── BigQuery Schemas ──────────────────────────────────────────────────────────
 
 SCHEMA_CURRENT = [
-    bigquery.SchemaField("city_name",        "STRING",    mode="REQUIRED"),
-    bigquery.SchemaField("city_id",          "INTEGER"),
-    bigquery.SchemaField("lat",              "FLOAT"),
-    bigquery.SchemaField("lon",              "FLOAT"),
-    bigquery.SchemaField("country",          "STRING"),
-    bigquery.SchemaField("dt",               "INTEGER",   mode="REQUIRED"),
-    bigquery.SchemaField("dt_utc",           "TIMESTAMP", mode="REQUIRED"),
-    bigquery.SchemaField("temp",             "FLOAT"),
-    bigquery.SchemaField("feels_like",       "FLOAT"),
-    bigquery.SchemaField("temp_min",         "FLOAT"),
-    bigquery.SchemaField("temp_max",         "FLOAT"),
-    bigquery.SchemaField("pressure",         "INTEGER"),
-    bigquery.SchemaField("humidity",         "INTEGER"),
-    bigquery.SchemaField("wind_speed",       "FLOAT"),
-    bigquery.SchemaField("wind_deg",         "INTEGER"),
-    bigquery.SchemaField("wind_gust",        "FLOAT"),
-    bigquery.SchemaField("visibility",       "INTEGER"),
-    bigquery.SchemaField("cloudiness",       "INTEGER"),
-    bigquery.SchemaField("weather_id",       "INTEGER"),
-    bigquery.SchemaField("weather_main",     "STRING"),
-    bigquery.SchemaField("weather_desc",     "STRING"),
-    bigquery.SchemaField("weather_icon",     "STRING"),
-    bigquery.SchemaField("sunrise",          "INTEGER"),
-    bigquery.SchemaField("sunset",           "INTEGER"),
-    bigquery.SchemaField("ingested_at",      "TIMESTAMP", mode="REQUIRED"),
+    bigquery.SchemaField("city_name",           "STRING",    mode="REQUIRED"),
+    bigquery.SchemaField("city_id",             "INTEGER"),
+    bigquery.SchemaField("lat",                 "FLOAT"),
+    bigquery.SchemaField("lon",                 "FLOAT"),
+    bigquery.SchemaField("country",             "STRING"),
+    bigquery.SchemaField("dt",                  "INTEGER",   mode="REQUIRED"),
+    bigquery.SchemaField("dt_utc",              "TIMESTAMP", mode="REQUIRED"),
+    bigquery.SchemaField("temp",                "FLOAT"),
+    bigquery.SchemaField("feels_like",          "FLOAT"),
+    bigquery.SchemaField("temp_min",            "FLOAT"),
+    bigquery.SchemaField("temp_max",            "FLOAT"),
+    bigquery.SchemaField("pressure",            "INTEGER"),
+    bigquery.SchemaField("humidity",            "INTEGER"),
+    bigquery.SchemaField("wind_speed",          "FLOAT"),
+    bigquery.SchemaField("wind_deg",            "INTEGER"),
+    bigquery.SchemaField("wind_gust",           "FLOAT"),
+    bigquery.SchemaField("visibility",          "INTEGER"),
+    bigquery.SchemaField("cloudiness",          "INTEGER"),
+    bigquery.SchemaField("weather_id",          "INTEGER"),
+    bigquery.SchemaField("weather_main",        "STRING"),
+    bigquery.SchemaField("weather_desc",        "STRING"),
+    bigquery.SchemaField("weather_icon",        "STRING"),
+    bigquery.SchemaField("sunrise",             "INTEGER"),
+    bigquery.SchemaField("sunset",              "INTEGER"),
+    bigquery.SchemaField("ingested_at",         "TIMESTAMP", mode="REQUIRED"),
     bigquery.SchemaField("pipeline_city_query", "STRING"),
 ]
 
 SCHEMA_FORECAST = [
-    bigquery.SchemaField("city_name",        "STRING",    mode="REQUIRED"),
-    bigquery.SchemaField("city_id",          "INTEGER"),
-    bigquery.SchemaField("lat",              "FLOAT"),
-    bigquery.SchemaField("lon",              "FLOAT"),
-    bigquery.SchemaField("country",          "STRING"),
-    bigquery.SchemaField("dt",               "INTEGER",   mode="REQUIRED"),
-    bigquery.SchemaField("dt_utc",           "TIMESTAMP", mode="REQUIRED"),
-    bigquery.SchemaField("dt_txt",           "STRING"),
-    bigquery.SchemaField("temp",             "FLOAT"),
-    bigquery.SchemaField("feels_like",       "FLOAT"),
-    bigquery.SchemaField("temp_min",         "FLOAT"),
-    bigquery.SchemaField("temp_max",         "FLOAT"),
-    bigquery.SchemaField("pressure",         "INTEGER"),
-    bigquery.SchemaField("humidity",         "INTEGER"),
-    bigquery.SchemaField("wind_speed",       "FLOAT"),
-    bigquery.SchemaField("wind_deg",         "INTEGER"),
-    bigquery.SchemaField("wind_gust",        "FLOAT"),
-    bigquery.SchemaField("cloudiness",       "INTEGER"),
-    bigquery.SchemaField("weather_main",     "STRING"),
-    bigquery.SchemaField("weather_desc",     "STRING"),
-    bigquery.SchemaField("pop",              "FLOAT"),
-    bigquery.SchemaField("rain_3h",          "FLOAT"),
-    bigquery.SchemaField("snow_3h",          "FLOAT"),
-    bigquery.SchemaField("ingested_at",      "TIMESTAMP", mode="REQUIRED"),
+    bigquery.SchemaField("city_name",           "STRING",    mode="REQUIRED"),
+    bigquery.SchemaField("city_id",             "INTEGER"),
+    bigquery.SchemaField("lat",                 "FLOAT"),
+    bigquery.SchemaField("lon",                 "FLOAT"),
+    bigquery.SchemaField("country",             "STRING"),
+    bigquery.SchemaField("dt",                  "INTEGER",   mode="REQUIRED"),
+    bigquery.SchemaField("dt_utc",              "TIMESTAMP", mode="REQUIRED"),
+    bigquery.SchemaField("dt_txt",              "STRING"),
+    bigquery.SchemaField("temp",                "FLOAT"),
+    bigquery.SchemaField("feels_like",          "FLOAT"),
+    bigquery.SchemaField("temp_min",            "FLOAT"),
+    bigquery.SchemaField("temp_max",            "FLOAT"),
+    bigquery.SchemaField("pressure",            "INTEGER"),
+    bigquery.SchemaField("humidity",            "INTEGER"),
+    bigquery.SchemaField("wind_speed",          "FLOAT"),
+    bigquery.SchemaField("wind_deg",            "INTEGER"),
+    bigquery.SchemaField("wind_gust",           "FLOAT"),
+    bigquery.SchemaField("cloudiness",          "INTEGER"),
+    bigquery.SchemaField("weather_main",        "STRING"),
+    bigquery.SchemaField("weather_desc",        "STRING"),
+    bigquery.SchemaField("pop",                 "FLOAT"),
+    bigquery.SchemaField("rain_3h",             "FLOAT"),
+    bigquery.SchemaField("snow_3h",             "FLOAT"),
+    bigquery.SchemaField("ingested_at",         "TIMESTAMP", mode="REQUIRED"),
     bigquery.SchemaField("pipeline_city_query", "STRING"),
 ]
 
 # ── BQ Client ─────────────────────────────────────────────────────────────────
 
 def get_bq_client() -> bigquery.Client:
-    """Return an authenticated BigQuery client."""
     creds_path = Path(CREDENTIALS_PATH)
     if not creds_path.exists():
-        logger.error(
-            "Credentials file not found: %s\n"
-            "Set GOOGLE_APPLICATION_CREDENTIALS in your .env", creds_path
-        )
+        logger.error("Credentials file not found: %s", creds_path)
         sys.exit(1)
-
     credentials = service_account.Credentials.from_service_account_file(
         str(creds_path),
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
@@ -126,7 +121,6 @@ def get_bq_client() -> bigquery.Client:
 
 
 def ensure_dataset(client: bigquery.Client) -> None:
-    """Create the raw_weather dataset if it doesn't exist."""
     dataset_ref = bigquery.Dataset(f"{PROJECT_ID}.{DATASET_RAW}")
     dataset_ref.location = "US"
     dataset_ref.description = "Raw weather data from OpenWeatherMap API"
@@ -139,7 +133,6 @@ def ensure_table(
     table_id: str,
     schema: list[bigquery.SchemaField],
 ) -> None:
-    """Create the table if it doesn't exist, with the given schema."""
     table = bigquery.Table(table_id, schema=schema)
     table.time_partitioning = bigquery.TimePartitioning(
         type_=bigquery.TimePartitioningType.DAY,
@@ -152,14 +145,12 @@ def ensure_table(
 # ── Row parsers ───────────────────────────────────────────────────────────────
 
 def parse_current(payload: dict) -> dict[str, Any]:
-    """Flatten a raw /weather JSON payload into a single BQ row."""
     main    = payload.get("main", {})
     wind    = payload.get("wind", {})
     weather = payload.get("weather", [{}])[0]
     clouds  = payload.get("clouds", {})
     sys_    = payload.get("sys", {})
     coord   = payload.get("coord", {})
-
     return {
         "city_name":           payload.get("name"),
         "city_id":             payload.get("id"),
@@ -193,14 +184,9 @@ def parse_current(payload: dict) -> dict[str, Any]:
 
 
 def parse_forecast(payload: dict) -> list[dict[str, Any]]:
-    """
-    Flatten a raw /forecast JSON payload into one BQ row per interval.
-    A single forecast file contains up to 40 intervals (5 days × 8 per day).
-    """
-    city   = payload.get("city", {})
-    coord  = city.get("coord", {})
-    rows   = []
-
+    city  = payload.get("city", {})
+    coord = city.get("coord", {})
+    rows  = []
     for interval in payload.get("list", []):
         main    = interval.get("main", {})
         wind    = interval.get("wind", {})
@@ -208,7 +194,6 @@ def parse_forecast(payload: dict) -> list[dict[str, Any]]:
         clouds  = interval.get("clouds", {})
         rain    = interval.get("rain", {})
         snow    = interval.get("snow", {})
-
         rows.append({
             "city_name":           city.get("name"),
             "city_id":             city.get("id"),
@@ -238,96 +223,99 @@ def parse_forecast(payload: dict) -> list[dict[str, Any]]:
             "ingested_at":         payload.get("ingested_at"),
             "pipeline_city_query": payload.get("pipeline_city_query"),
         })
-
     return rows
 
 # ── File discovery ────────────────────────────────────────────────────────────
 
-def find_json_files(base_dir: str, date_filter: str | None = None) -> dict[str, list[Path]]:
-    """
-    Walk the raw data directory and return:
-      { "current": [Path, ...], "forecast": [Path, ...] }
-    Optionally filter to a specific date (YYYY-MM-DD).
-    """
-    base = Path(base_dir)
+def find_json_files(
+    base_dir: str, date_filter: str | None = None
+) -> dict[str, list[Path]]:
+    base  = Path(base_dir)
     files: dict[str, list[Path]] = {"current": [], "forecast": []}
-
     for endpoint in ("current", "forecast"):
-        pattern = f"**/*.json"
-        for path in sorted((base / "owm" / endpoint).glob(pattern)):
-            if date_filter:
-                if date_filter.replace("-", "/") not in str(path):
-                    continue
+        search_root = base / "owm" / endpoint
+        if not search_root.exists():
+            logger.warning("Directory not found: %s", search_root)
+            continue
+        for path in sorted(search_root.glob("**/*.json")):
+            if date_filter and date_filter.replace("-", "/") not in str(path):
+                continue
             files[endpoint].append(path)
-
     logger.info(
         "Found %d current + %d forecast files",
         len(files["current"]), len(files["forecast"])
     )
     return files
 
-# ── Loader ────────────────────────────────────────────────────────────────────
+# ── Batch loader (free-tier safe) ─────────────────────────────────────────────
+
+def batch_load(
+    client: bigquery.Client,
+    table_id: str,
+    rows: list[dict],
+    dry_run: bool = False,
+) -> int:
+    """
+    Load rows using load_table_from_json (BigQuery Jobs API).
+    This is FREE — unlike streaming inserts which require the paid tier.
+    Uses WRITE_APPEND so existing rows are preserved across runs.
+    """
+    if not rows:
+        return 0
+
+    if dry_run:
+        logger.info("[dry-run] Would batch-load %d rows into %s", len(rows), table_id)
+        for row in rows[:2]:
+            print(json.dumps(row, indent=2, default=str))
+        return len(rows)
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        ignore_unknown_values=True,
+    )
+
+    job = client.load_table_from_json(rows, table_id, job_config=job_config)
+    job.result()  # waits for job to complete
+
+    if job.errors:
+        logger.error("Load job errors for %s: %s", table_id, job.errors)
+        return 0
+
+    logger.info("Batch loaded %d rows → %s", len(rows), table_id)
+    return len(rows)
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def load_files(
     client: bigquery.Client,
     files: dict[str, list[Path]],
     dry_run: bool = False,
 ) -> dict[str, int]:
-    """
-    Parse all JSON files and stream-insert rows into BigQuery.
-    Returns { "current": rows_loaded, "forecast": rows_loaded }.
-    """
     totals = {"current": 0, "forecast": 0}
 
-    # ── Current weather ───────────────────────────────────────────────────────
     current_rows = []
     for path in files["current"]:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             current_rows.append(parse_current(payload))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Skipping %s — parse error: %s", path.name, exc)
 
-    if current_rows:
-        if dry_run:
-            logger.info("[dry-run] Would insert %d rows into %s", len(current_rows), TABLE_CURRENT)
-            for row in current_rows[:2]:
-                print(json.dumps(row, indent=2, default=str))
-        else:
-            errors = client.insert_rows_json(TABLE_CURRENT, current_rows)
-            if errors:
-                logger.error("BQ insert errors (current): %s", errors)
-            else:
-                logger.info("Inserted %d rows → %s", len(current_rows), TABLE_CURRENT)
-        totals["current"] = len(current_rows)
+    totals["current"] = batch_load(client, TABLE_CURRENT, current_rows, dry_run)
 
-    # ── Forecast ──────────────────────────────────────────────────────────────
     forecast_rows = []
     for path in files["forecast"]:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             forecast_rows.extend(parse_forecast(payload))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Skipping %s — parse error: %s", path.name, exc)
 
-    if forecast_rows:
-        # BigQuery streaming has a 10 MB request limit — batch in chunks of 500
-        chunk_size = 500
-        chunks = [forecast_rows[i:i+chunk_size] for i in range(0, len(forecast_rows), chunk_size)]
-        for chunk in chunks:
-            if dry_run:
-                logger.info("[dry-run] Would insert %d rows into %s", len(chunk), TABLE_FORECAST)
-            else:
-                errors = client.insert_rows_json(TABLE_FORECAST, chunk)
-                if errors:
-                    logger.error("BQ insert errors (forecast): %s", errors)
-        if not dry_run:
-            logger.info("Inserted %d rows → %s", len(forecast_rows), TABLE_FORECAST)
-        totals["forecast"] = len(forecast_rows)
+    totals["forecast"] = batch_load(client, TABLE_FORECAST, forecast_rows, dry_run)
 
     return totals
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 
 def run(date_filter: str | None = None, dry_run: bool = False) -> None:
     if not PROJECT_ID:
@@ -336,7 +324,7 @@ def run(date_filter: str | None = None, dry_run: bool = False) -> None:
 
     client = get_bq_client()
     ensure_dataset(client)
-    ensure_table(client, TABLE_CURRENT, SCHEMA_CURRENT)
+    ensure_table(client, TABLE_CURRENT,  SCHEMA_CURRENT)
     ensure_table(client, TABLE_FORECAST, SCHEMA_FORECAST)
 
     files = find_json_files(LOCAL_OUTPUT_DIR, date_filter)
@@ -344,11 +332,11 @@ def run(date_filter: str | None = None, dry_run: bool = False) -> None:
     if not files["current"] and not files["forecast"]:
         logger.warning(
             "No JSON files found in %s. "
-            "Run extract_weather.py first to generate raw data.", LOCAL_OUTPUT_DIR
+            "Run extract_weather.py first.", LOCAL_OUTPUT_DIR
         )
         return
 
-    totals = load_files(client, files, dry_run=dry_run)
+    totals = load_files(files=files, client=client, dry_run=dry_run)
     logger.info(
         "Load complete | current=%d rows | forecast=%d rows",
         totals["current"], totals["forecast"]
@@ -356,8 +344,10 @@ def run(date_filter: str | None = None, dry_run: bool = False) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Load raw weather JSON into BigQuery")
-    parser.add_argument("--date", type=str, default=None,
+    parser = argparse.ArgumentParser(
+        description="Load raw weather JSON into BigQuery (batch, free-tier safe)"
+    )
+    parser.add_argument("--date",    type=str, default=None,
                         help="Only load files for this date (YYYY-MM-DD)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print rows, skip BigQuery insert")

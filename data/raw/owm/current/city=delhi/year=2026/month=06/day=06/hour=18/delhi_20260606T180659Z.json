@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 77.2167,
+    "lat": 28.6667
+  },
+  "weather": [
+    {
+      "id": 803,
+      "main": "Clouds",
+      "description": "broken clouds",
+      "icon": "04n"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 35.75,
+    "feels_like": 34.72,
+    "temp_min": 35.75,
+    "temp_max": 35.75,
+    "pressure": 1001,
+    "humidity": 25,
+    "sea_level": 1001,
+    "grnd_level": 977
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 2.88,
+    "deg": 300,
+    "gust": 5.31
+  },
+  "clouds": {
+    "all": 70
+  },
+  "dt": 1780768741,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1780703580,
+    "sunset": 1780753607
+  },
+  "timezone": 19800,
+  "id": 1273294,
+  "name": "Delhi",
+  "cod": 200,
+  "ingested_at": "2026-06-06T18:06:59.451983+00:00",
+  "pipeline_city_query": "Delhi"
+}

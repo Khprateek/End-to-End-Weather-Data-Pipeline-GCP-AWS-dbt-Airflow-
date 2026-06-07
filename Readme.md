@@ -291,6 +291,9 @@ mart/
 Run dbt:
 
 ```bash
+export GCP_PROJECT_ID="weather-pipeline-498519"
+export GOOGLE_APPLICATION_CREDENTIALS="D:/JOB/Work/End-to-End Weather Pipeline/gcp-credentials.json"
+cd dbt
 dbt run
 dbt test
 dbt docs generate && dbt docs serve
