@@ -17,7 +17,10 @@
 Every hour, an Airflow DAG wakes up inside Docker, calls the OpenWeatherMap API for 10 Indian cities in parallel, validates the responses, and lands raw JSON files to a local data lake. A BigQuery loader then flattens and batch-loads those files into Google BigQuery. dbt transforms the raw data through three layers — staging, intermediate, and mart — producing clean, aggregated, analytics-ready tables. Looker Studio reads those tables directly from BigQuery and renders a live dashboard.
  
 A historical backfill script using the free Open-Meteo API fills gaps for any dates the pipeline wasn't running.
-
+# Architecture
+![Architecture Diagram](assets/Cloud warehouse.drawio.svg)
+# Extractor
+![Architecture Diagram](assets/openweathermap_extractor_detail.svg)
 ## Overview
 
 This project is a production-style, end-to-end data engineering pipeline that extracts weather data from the [OpenWeatherMap API](https://openweathermap.org/api) for 10 major Indian cities every hour, lands raw JSON to a cloud data lake, transforms it using dbt, and serves it via a BI dashboard.
