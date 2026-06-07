@@ -18,7 +18,7 @@ Every hour, an Airflow DAG wakes up inside Docker, calls the OpenWeatherMap API 
  
 A historical backfill script using the free Open-Meteo API fills gaps for any dates the pipeline wasn't running.
 # Architecture
-![Architecture Diagram](assets/Cloud warehouse.drawio.svg)
+![Architecture Diagram](assets/Cloud_warehouse.drawio.svg)
 # Extractor
 ![Architecture Diagram](assets/openweathermap_extractor_detail.svg)
 ## Overview
