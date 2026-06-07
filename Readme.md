@@ -1,13 +1,22 @@
-# End-to-End Cloud Data Engineering Pipeline
-### Real-time weather data pipeline for 10 Indian cities using OpenWeatherMap, Apache Airflow, dbt, and cloud storage
-
+# ⛅ End-to-End Cloud Weather Data Pipeline
+ 
+> A production-style data engineering pipeline that extracts real-time weather data for 10 major Indian cities every hour, transforms it through a multi-layer dbt model architecture, and serves analytics-ready tables to a live Looker Studio dashboard — all orchestrated by Apache Airflow running in Docker.
+ 
+![CI](https://github.com/your-username/end-to-end-weather-pipeline/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Apache_Airflow-2.9-017CEE?logo=apacheairflow&logoColor=white)
-![dbt](https://img.shields.io/badge/dbt-core-FF694B?logo=dbt&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
-
+![dbt](https://img.shields.io/badge/dbt-1.8-FF694B?logo=dbt&logoColor=white)
+![BigQuery](https://img.shields.io/badge/BigQuery-GCP-4285F4?logo=googlecloud&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22C55E)
+ 
 ---
+ 
+## What this project does
+ 
+Every hour, an Airflow DAG wakes up inside Docker, calls the OpenWeatherMap API for 10 Indian cities in parallel, validates the responses, and lands raw JSON files to a local data lake. A BigQuery loader then flattens and batch-loads those files into Google BigQuery. dbt transforms the raw data through three layers — staging, intermediate, and mart — producing clean, aggregated, analytics-ready tables. Looker Studio reads those tables directly from BigQuery and renders a live dashboard.
+ 
+A historical backfill script using the free Open-Meteo API fills gaps for any dates the pipeline wasn't running.
 
 ## Overview
 
@@ -363,15 +372,19 @@ A single current weather record for Delhi:
 
 ## Roadmap
 
-- [x] Extraction layer — OpenWeatherMap API
+- [x] OpenWeatherMap extraction for 10 Indian cities
 - [x] Airflow DAG with parallel tasks and quality checks
-- [ ] dbt transformation models
-- [ ] Great Expectations data quality suite
-- [ ] Load to BigQuery / Snowflake
-- [ ] Metabase / Superset dashboard
-- [ ] GitHub Actions CI/CD
-- [ ] Terraform for cloud infrastructure
-
+- [x] Local data lake with Hive-style partitioning
+- [x] BigQuery batch loader (free-tier compatible)
+- [x] dbt staging, intermediate, and mart models
+- [x] Historical backfill via Open-Meteo
+- [x] GitHub Actions CI/CD
+- [x] Looker Studio dashboard
+- [ ] Add load_to_bigquery as Airflow DAG task
+- [ ] Deploy Airflow to Cloud Composer (GCP)
+- [ ] Terraform for infrastructure as code
+- [ ] Great Expectations full validation suite
+- [ ] Slack alerting on pipeline failure
 ---
 
 ## License
