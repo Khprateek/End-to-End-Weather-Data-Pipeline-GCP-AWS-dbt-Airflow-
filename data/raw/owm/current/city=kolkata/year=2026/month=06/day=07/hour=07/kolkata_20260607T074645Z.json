@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 88.3697,
+    "lat": 22.5697
+  },
+  "weather": [
+    {
+      "id": 804,
+      "main": "Clouds",
+      "description": "overcast clouds",
+      "icon": "04d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 33.42,
+    "feels_like": 38.44,
+    "temp_min": 33.42,
+    "temp_max": 33.42,
+    "pressure": 1002,
+    "humidity": 54,
+    "sea_level": 1002,
+    "grnd_level": 1001
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 3.57,
+    "deg": 199,
+    "gust": 4.13
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1780818356,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1780788083,
+    "sunset": 1780836570
+  },
+  "timezone": 19800,
+  "id": 1275004,
+  "name": "Kolkata",
+  "cod": 200,
+  "ingested_at": "2026-06-07T07:46:45.056927+00:00",
+  "pipeline_city_query": "Kolkata"
+}

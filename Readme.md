@@ -184,7 +184,7 @@ Open `.env` and fill in your values:
 ```env
 OWM_API_KEY=your_openweathermap_api_key
 STORAGE_BACKEND=local          # "local" | "s3" | "gcs"
-LOCAL_OUTPUT_DIR=data/raw
+LOCAL_OUTPUT_DIR=data          # data root — files land at data/raw/owm/
 ```
 
 > **Note:** New OWM API keys take up to 2 hours to activate after signup.
@@ -328,7 +328,7 @@ Add the badge to your README once the workflow is live:
 |----------|----------|-------------|
 | `OWM_API_KEY` | Yes | OpenWeatherMap API key |
 | `STORAGE_BACKEND` | Yes | `local`, `s3`, or `gcs` |
-| `LOCAL_OUTPUT_DIR` | For local | Path to write raw files |
+| `LOCAL_OUTPUT_DIR` | For local | Data root directory (files land at `{LOCAL_OUTPUT_DIR}/raw/owm/`) |
 | `S3_BUCKET` | For S3 | AWS S3 bucket name |
 | `GCS_BUCKET` | For GCS | GCP bucket name |
 | `SLACK_WEBHOOK_URL` | Optional | Slack incoming webhook for alerts |

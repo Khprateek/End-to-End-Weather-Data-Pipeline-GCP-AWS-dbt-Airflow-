@@ -1,0 +1,48 @@
+{
+  "coord": {
+    "lon": 77.6033,
+    "lat": 12.9762
+  },
+  "weather": [
+    {
+      "id": 804,
+      "main": "Clouds",
+      "description": "overcast clouds",
+      "icon": "04d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 29.18,
+    "feels_like": 31.5,
+    "temp_min": 28.05,
+    "temp_max": 30.75,
+    "pressure": 1008,
+    "humidity": 61,
+    "sea_level": 1008,
+    "grnd_level": 911
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 9.39,
+    "deg": 263,
+    "gust": 27.27
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1780821311,
+  "sys": {
+    "type": 2,
+    "id": 2017753,
+    "country": "IN",
+    "sunrise": 1780791759,
+    "sunset": 1780838063
+  },
+  "timezone": 19800,
+  "id": 1277333,
+  "name": "Bengaluru",
+  "cod": 200,
+  "ingested_at": "2026-06-07T08:39:12.758080+00:00",
+  "pipeline_city_query": "Bengaluru"
+}

@@ -30,9 +30,10 @@ from airflow.utils.trigger_rule import TriggerRule
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 # Allows the DAG to import from src/ regardless of how Airflow is launched
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_PATH = PROJECT_ROOT / "src"
-sys.path.insert(0, str(SRC_PATH))
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
 
 from extract_weather import (   # noqa: E402
     CITIES,

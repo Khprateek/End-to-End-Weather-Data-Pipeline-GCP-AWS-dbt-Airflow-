@@ -26,6 +26,8 @@ from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from data_paths import DATA_ROOT, local_file_path, make_storage_key
+
 load_dotenv()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -43,7 +45,7 @@ OWM_API_KEY: str = os.getenv("OWM_API_KEY", "")
 STORAGE_BACKEND: str = os.getenv("STORAGE_BACKEND", "local")   # "s3" | "gcs" | "local"
 S3_BUCKET: str = os.getenv("S3_BUCKET", "")
 GCS_BUCKET: str = os.getenv("GCS_BUCKET", "")
-LOCAL_OUTPUT_DIR: str = os.getenv("LOCAL_OUTPUT_DIR", "/tmp/weather_raw")
+LOCAL_OUTPUT_DIR: str = str(DATA_ROOT)
 
 BASE_URL = "https://api.openweathermap.org/data/2.5"
 
@@ -180,25 +182,6 @@ def validate_forecast(payload: dict) -> None:
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 
-def _make_partition_path(endpoint: str, city: str, now: datetime) -> str:
-    """
-    Build a Hive-style partition path.
-    Example: raw/owm/current/city=Delhi/year=2026/month=06/day=04/
-    """
-    return (
-        f"raw/owm/{endpoint}/"
-        f"city={city.lower().replace(' ', '_')}/"
-        f"year={now.year:04d}/"
-        f"month={now.month:02d}/"
-        f"day={now.day:02d}/"
-        f"hour={now.hour:02d}/"
-    )
-
-
-def _make_filename(city: str, now: datetime) -> str:
-    return f"{city.lower().replace(' ', '_')}_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
-
-
 def upload_to_s3(data: dict, key: str) -> None:
     """Upload JSON payload to AWS S3."""
     import boto3  # imported lazily — only needed for S3 backend
@@ -226,7 +209,7 @@ def upload_to_gcs(data: dict, blob_name: str) -> None:
 
 def save_locally(data: dict, relative_key: str) -> None:
     """Save JSON payload to local filesystem (useful for dev/testing)."""
-    full_path = Path(LOCAL_OUTPUT_DIR) / relative_key
+    full_path = local_file_path(relative_key)
     full_path.parent.mkdir(parents=True, exist_ok=True)
     full_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("Saved locally | %s", full_path)
@@ -238,9 +221,7 @@ def store(data: dict, endpoint: str, city: str, dry_run: bool = False) -> str:
     Returns the storage key/path used.
     """
     now = datetime.now(timezone.utc)
-    partition = _make_partition_path(endpoint, city, now)
-    filename = _make_filename(city, now)
-    key = partition + filename
+    key = make_storage_key(endpoint, city, now)
 
     if dry_run:
         print(json.dumps(data, indent=2, ensure_ascii=False))

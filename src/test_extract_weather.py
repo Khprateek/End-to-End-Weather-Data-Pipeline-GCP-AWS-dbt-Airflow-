@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from data_paths import make_filename, make_partition_path  # noqa: E402
+
 from extract_weather import (
-    _make_filename,
-    _make_partition_path,
     validate_current,
     validate_forecast,
 )
@@ -123,17 +123,17 @@ class TestPartitionPath:
     def test_path_format(self):
         from datetime import datetime, timezone
         now = datetime(2026, 6, 4, 10, 30, 0, tzinfo=timezone.utc)
-        path = _make_partition_path("current", "Delhi", now)
+        path = make_partition_path("current", "Delhi", now)
         assert path == "raw/owm/current/city=delhi/year=2026/month=06/day=04/hour=10/"
 
     def test_city_name_lowercased_and_spaces_replaced(self):
         from datetime import datetime, timezone
         now = datetime(2026, 6, 4, 0, 0, 0, tzinfo=timezone.utc)
-        path = _make_partition_path("forecast", "New Delhi", now)
+        path = make_partition_path("forecast", "New Delhi", now)
         assert "city=new_delhi" in path
 
     def test_filename_format(self):
         from datetime import datetime, timezone
         now = datetime(2026, 6, 4, 10, 30, 0, tzinfo=timezone.utc)
-        name = _make_filename("Delhi", now)
+        name = make_filename("Delhi", now)
         assert name == "delhi_20260604T103000Z.json"

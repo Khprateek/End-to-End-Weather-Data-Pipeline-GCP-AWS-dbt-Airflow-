@@ -28,6 +28,9 @@ from dotenv import load_dotenv
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from data_paths import DATA_ROOT, raw_owm_search_roots  # noqa: E402
+
 load_dotenv()
 
 logging.basicConfig(
@@ -42,7 +45,7 @@ logger = logging.getLogger("bq_loader")
 PROJECT_ID       = os.getenv("GCP_PROJECT_ID", "")
 DATASET_RAW      = os.getenv("BIGQUERY_DATASET_RAW", "raw_weather")
 CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcp-credentials.json")
-LOCAL_OUTPUT_DIR = os.getenv("LOCAL_OUTPUT_DIR", "data/raw")
+LOCAL_OUTPUT_DIR = str(DATA_ROOT)
 
 TABLE_CURRENT  = f"{PROJECT_ID}.{DATASET_RAW}.current_weather"
 TABLE_FORECAST = f"{PROJECT_ID}.{DATASET_RAW}.forecast_weather"
@@ -228,22 +231,38 @@ def parse_forecast(payload: dict) -> list[dict[str, Any]]:
 # ── File discovery ────────────────────────────────────────────────────────────
 
 def find_json_files(
-    base_dir: str, date_filter: str | None = None
+    date_filter: str | None = None,
 ) -> dict[str, list[Path]]:
-    base  = Path(base_dir)
     files: dict[str, list[Path]] = {"current": [], "forecast": []}
+    seen: dict[str, set[str]] = {"current": set(), "forecast": set()}
+    roots = raw_owm_search_roots()
+
+    if not roots:
+        logger.warning(
+            "No raw OWM directory found under %s (expected %s/raw/owm/)",
+            DATA_ROOT,
+            DATA_ROOT,
+        )
+        return files
+
     for endpoint in ("current", "forecast"):
-        search_root = base / "owm" / endpoint
-        if not search_root.exists():
-            logger.warning("Directory not found: %s", search_root)
-            continue
-        for path in sorted(search_root.glob("**/*.json")):
-            if date_filter and date_filter.replace("-", "/") not in str(path):
+        for root in roots:
+            search_root = root / endpoint
+            if not search_root.exists():
                 continue
-            files[endpoint].append(path)
+            for path in sorted(search_root.glob("**/*.json")):
+                if date_filter and date_filter.replace("-", "/") not in str(path):
+                    continue
+                if path.name in seen[endpoint]:
+                    continue
+                seen[endpoint].add(path.name)
+                files[endpoint].append(path)
+
     logger.info(
-        "Found %d current + %d forecast files",
-        len(files["current"]), len(files["forecast"])
+        "Found %d current + %d forecast files under %s",
+        len(files["current"]),
+        len(files["forecast"]),
+        ", ".join(str(r) for r in roots),
     )
     return files
 
@@ -327,7 +346,7 @@ def run(date_filter: str | None = None, dry_run: bool = False) -> None:
     ensure_table(client, TABLE_CURRENT,  SCHEMA_CURRENT)
     ensure_table(client, TABLE_FORECAST, SCHEMA_FORECAST)
 
-    files = find_json_files(LOCAL_OUTPUT_DIR, date_filter)
+    files = find_json_files(date_filter)
 
     if not files["current"] and not files["forecast"]:
         logger.warning(
