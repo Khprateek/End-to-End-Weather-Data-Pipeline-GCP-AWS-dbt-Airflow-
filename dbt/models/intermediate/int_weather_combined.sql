@@ -4,7 +4,7 @@
 -- of forecast intervals. Used as input to all mart models.
 -- Materialized as a table (refreshed on each dbt run).
 
-with current as (
+with current_snapshots as (
 
     select
         city_name,
@@ -45,7 +45,7 @@ with current as (
 
 latest_current as (
 
-    select * from current
+    select * from current_snapshots
     where recency_rank = 1
 
 ),

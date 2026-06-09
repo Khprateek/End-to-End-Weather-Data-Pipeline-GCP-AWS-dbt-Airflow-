@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 75.8167,
+    "lat": 26.9167
+  },
+  "weather": [
+    {
+      "id": 800,
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01n"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 34.05,
+    "feels_like": 32.86,
+    "temp_min": 34.05,
+    "temp_max": 34.05,
+    "pressure": 999,
+    "humidity": 27,
+    "sea_level": 999,
+    "grnd_level": 953
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 3.66,
+    "deg": 299,
+    "gust": 8.63
+  },
+  "clouds": {
+    "all": 0
+  },
+  "dt": 1781030557,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1781049739,
+    "sunset": 1781099407
+  },
+  "timezone": 19800,
+  "id": 1269515,
+  "name": "Jaipur",
+  "cod": 200,
+  "ingested_at": "2026-06-09T18:42:39.660750+00:00",
+  "pipeline_city_query": "Jaipur"
+}

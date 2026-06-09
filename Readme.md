@@ -13,7 +13,7 @@
 ---
  
 ## What this project does
- 
+IndiaWeatherFlow is an end-to-end cloud data engineering pipeline that ingests real-time weather data for 10 Indian cities every hour via OpenWeatherMap API, orchestrated by Apache Airflow in Docker, and batch-loads validated JSON into Google BigQuery. A 3-layer dbt transformation architecture — staging, intermediate, and mart — produces analytics-ready tables powering a live Looker Studio dashboard with temperature trends, city comparisons, and 24-hour forecasts. The project includes GitHub Actions CI/CD with automated linting, pytest, and dbt model validation, plus a free Open-Meteo backfill utility for gap recovery.
 Every hour, an Airflow DAG wakes up inside Docker, calls the OpenWeatherMap API for 10 Indian cities in parallel, validates the responses, and lands raw JSON files to a local data lake. A BigQuery loader then flattens and batch-loads those files into Google BigQuery. dbt transforms the raw data through three layers — staging, intermediate, and mart — producing clean, aggregated, analytics-ready tables. Looker Studio reads those tables directly from BigQuery and renders a live dashboard.
  
 A historical backfill script using the free Open-Meteo API fills gaps for any dates the pipeline wasn't running.
@@ -69,7 +69,19 @@ Built as a portfolio project demonstrating real-world data engineering practices
 5. Raw JSON landed to `raw/owm/{endpoint}/city={name}/year=/month=/day=/hour/`
 6. Quality gate asserts all 10 cities succeeded before marking run complete
 7. Slack/email alert fires if any task fails
-
+8. to check the full check : python loaders/pipeline_health_check.py
+9.   Pipeline has gaps. Run these commands in order:
+  a. python src/extract_weather.py
+     Extracts raw JSON from OpenWeatherMap for all 10 cities
+  b. python loaders/load_to_bigquery.py
+     Batch-loads raw JSON files into BigQuery raw_weather dataset
+  c. cd dbt && dbt run --select staging
+     Rebuilds stg_current_weather and stg_forecast_weather views
+  d. cd dbt && dbt run --select mart
+     Rebuilds mart_city_weather_daily, mart_city_comparison,
+     mart_forecast_next24h tables in mart_weather dataset
+  After each step, re-run this script to verify progress:
+  python loaders/pipeline_health_check.py
 ---
 
 ## Cities covered

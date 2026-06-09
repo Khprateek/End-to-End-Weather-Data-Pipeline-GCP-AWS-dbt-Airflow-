@@ -4,7 +4,7 @@
 -- of forecast intervals. Used as input to all mart models.
 -- Materialized as a table (refreshed on each dbt run).
 
-with current as (
+with current_snapshots as (
 
     select
         city_name,
@@ -39,13 +39,13 @@ with current as (
             order by observed_at_utc desc
         ) as recency_rank
 
-    from `weather-pipeline-498519`.`stg_weather_stg_weather`.`stg_current_weather`
+    from `weather-pipeline-498519`.`stg_weather`.`stg_current_weather`
 
 ),
 
 latest_current as (
 
-    select * from current
+    select * from current_snapshots
     where recency_rank = 1
 
 ),
@@ -66,7 +66,7 @@ forecast as (
         precip_probability as forecast_precip_prob,
         rain_3h_mm         as forecast_rain_3h_mm
 
-    from `weather-pipeline-498519`.`stg_weather_stg_weather`.`stg_forecast_weather`
+    from `weather-pipeline-498519`.`stg_weather`.`stg_forecast_weather`
     -- only keep the next 24h of forecasts from latest ingestion
     where forecast_at_utc >= timestamp_trunc(current_timestamp(), hour)
       and forecast_at_utc <  timestamp_add(

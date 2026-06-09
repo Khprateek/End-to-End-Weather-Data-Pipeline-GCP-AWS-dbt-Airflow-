@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 78.4744,
+    "lat": 17.3753
+  },
+  "weather": [
+    {
+      "id": 802,
+      "main": "Clouds",
+      "description": "scattered clouds",
+      "icon": "03n"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 28.07,
+    "feels_like": 30.03,
+    "temp_min": 28.07,
+    "temp_max": 28.07,
+    "pressure": 1007,
+    "humidity": 64,
+    "sea_level": 1007,
+    "grnd_level": 944
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 6.55,
+    "deg": 254,
+    "gust": 11.5
+  },
+  "clouds": {
+    "all": 47
+  },
+  "dt": 1780943557,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1780963871,
+    "sunset": 1781011176
+  },
+  "timezone": 19800,
+  "id": 1269843,
+  "name": "Hyderabad",
+  "cod": 200,
+  "ingested_at": "2026-06-08T18:37:25.474252+00:00",
+  "pipeline_city_query": "Hyderabad"
+}

@@ -53,7 +53,8 @@ CITIES: list[dict[str, str]] = [
     {"name": "Delhi",       "country": "IN"},
     {"name": "Mumbai",      "country": "IN"},
     {"name": "Bengaluru",   "country": "IN"},
-    {"name": "Prayagraj",   "country": "IN"},
+    # OWM still indexes this city as Allahabad; keep display name Prayagraj for storage paths.
+    {"name": "Prayagraj",   "country": "IN", "owm_query": "Allahabad"},
     {"name": "Chennai",     "country": "IN"},
     {"name": "Kolkata",     "country": "IN"},
     {"name": "Hyderabad",   "country": "IN"},
@@ -61,6 +62,11 @@ CITIES: list[dict[str, str]] = [
     {"name": "Jaipur",      "country": "IN"},
     {"name": "Ahmedabad",   "country": "IN"},
 ]
+
+
+def owm_query_name(city_cfg: dict[str, str]) -> str:
+    """City string sent to OpenWeatherMap (may differ from pipeline display name)."""
+    return city_cfg.get("owm_query", city_cfg["name"])
 
 # Required keys we validate exist in the API response
 REQUIRED_CURRENT_KEYS = {"main", "weather", "wind", "dt", "name", "coord"}
@@ -272,12 +278,14 @@ def extract_city(city_cfg: dict[str, str], dry_run: bool = False) -> dict:
     Returns a result dict with status, keys stored, and error info.
     """
     city = city_cfg["name"]
+    query_city = owm_query_name(city_cfg)
     country = city_cfg["country"]
     result = {"city": city, "status": "success", "keys": [], "error": None}
 
     try:
         # --- Current weather ---
-        current = fetch_current_weather(city, country)
+        current = fetch_current_weather(query_city, country)
+        current["pipeline_city_query"] = city
         validate_current(current)
         key = store(current, "current", city, dry_run)
         result["keys"].append(key)
@@ -286,7 +294,8 @@ def extract_city(city_cfg: dict[str, str], dry_run: bool = False) -> dict:
         time.sleep(0.5)
 
         # --- 5-day forecast ---
-        forecast = fetch_forecast(city, country)
+        forecast = fetch_forecast(query_city, country)
+        forecast["pipeline_city_query"] = city
         validate_forecast(forecast)
         key = store(forecast, "forecast", city, dry_run)
         result["keys"].append(key)

@@ -230,6 +230,18 @@ def parse_forecast(payload: dict) -> list[dict[str, Any]]:
 
 # ── File discovery ────────────────────────────────────────────────────────────
 
+def _path_matches_date(path: Path, date_filter: str | None) -> bool:
+    """Match Hive partitions like year=2026/month=06/day=08."""
+    if not date_filter:
+        return True
+    try:
+        year, month, day = date_filter.split("-")
+    except ValueError:
+        return date_filter in str(path)
+    needle = f"year={year}/month={month}/day={day}"
+    return needle in str(path).replace("\\", "/")
+
+
 def find_json_files(
     date_filter: str | None = None,
 ) -> dict[str, list[Path]]:
@@ -251,7 +263,7 @@ def find_json_files(
             if not search_root.exists():
                 continue
             for path in sorted(search_root.glob("**/*.json")):
-                if date_filter and date_filter.replace("-", "/") not in str(path):
+                if not _path_matches_date(path, date_filter):
                     continue
                 if path.name in seen[endpoint]:
                     continue

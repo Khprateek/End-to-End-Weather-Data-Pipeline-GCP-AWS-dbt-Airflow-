@@ -3,22 +3,21 @@ weather_pipeline_dag.py
 -----------------------
 Airflow DAG for the end-to-end weather pipeline.
 
-Schedule : every hour
-Tasks    : 1. validate_api_key  (quick pre-flight check)
-           2. extract_current   (current weather, all cities)
-           3. extract_forecast  (5-day forecast, all cities)
-           4. run_quality_checks (row count + schema assertions)
-           5. notify_on_failure  (triggers only if any task fails)
-
-Task 2 and 3 run in parallel after task 1 passes.
-Task 4 runs after both 2 and 3 succeed.
+Schedule : every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+Tasks    : 1. validate_api_key
+           2. extract_current
+           3. extract_forecast
+           4. quality_checks
+           5. load_to_bigquery
+           6. run_dbt_transforms
+           7. notify_on_failure  (only on upstream failure)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -32,13 +31,17 @@ from airflow.utils.trigger_rule import TriggerRule
 # Allows the DAG to import from src/ regardless of how Airflow is launched
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_PATH = PROJECT_ROOT / "src"
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
+LOADERS_PATH = PROJECT_ROOT / "loaders"
+DBT_PATH = PROJECT_ROOT / "dbt"
+for path in (SRC_PATH, LOADERS_PATH):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from extract_weather import (   # noqa: E402
     CITIES,
     fetch_current_weather,
     fetch_forecast,
+    owm_query_name,
     store,
     validate_current,
     validate_forecast,
@@ -54,7 +57,7 @@ DEFAULT_ARGS = {
     "email_on_retry": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=10),
+    "execution_timeout": timedelta(minutes=15),
 }
 
 # ── Task functions ─────────────────────────────────────────────────────────────
@@ -96,9 +99,11 @@ def extract_all_current(**context) -> dict:
 
     for city_cfg in CITIES:
         city = city_cfg["name"]
+        query_city = owm_query_name(city_cfg)
         country = city_cfg["country"]
         try:
-            payload = fetch_current_weather(city, country)
+            payload = fetch_current_weather(query_city, country)
+            payload["pipeline_city_query"] = city
             validate_current(payload)
             key = store(payload, "current", city, dry_run=dry_run)
             results.append({"city": city, "status": "success", "key": key})
@@ -129,9 +134,11 @@ def extract_all_forecast(**context) -> dict:
 
     for city_cfg in CITIES:
         city = city_cfg["name"]
+        query_city = owm_query_name(city_cfg)
         country = city_cfg["country"]
         try:
-            payload = fetch_forecast(city, country)
+            payload = fetch_forecast(query_city, country)
+            payload["pipeline_city_query"] = city
             validate_forecast(payload)
             key = store(payload, "forecast", city, dry_run=dry_run)
             results.append({"city": city, "status": "success", "key": key})
@@ -185,6 +192,53 @@ def run_quality_checks(**context) -> None:
     )
 
 
+def load_to_bigquery_task(**context) -> None:
+    """
+    Batch-load raw JSON for the DAG logical date into BigQuery.
+    Skipped when dry_run is enabled.
+    """
+    if context["params"].get("dry_run", False):
+        logger.info("dry_run=True — skipping BigQuery load")
+        return
+
+    from load_to_bigquery import run as bq_run  # noqa: E402
+
+    logical_date = context["logical_date"]
+    date_filter = logical_date.strftime("%Y-%m-%d")
+    logger.info("Loading local JSON into BigQuery for date=%s", date_filter)
+    bq_run(date_filter=date_filter, dry_run=False)
+
+
+def run_dbt_transforms(**context) -> None:
+    """
+    Rebuild staging, intermediate, and mart models in BigQuery.
+    Skipped when dry_run is enabled.
+    """
+    if context["params"].get("dry_run", False):
+        logger.info("dry_run=True — skipping dbt run")
+        return
+
+    env = os.environ.copy()
+    creds = env.get("GOOGLE_APPLICATION_CREDENTIALS", str(PROJECT_ROOT / "gcp-credentials.json"))
+    env["GOOGLE_APPLICATION_CREDENTIALS"] = creds
+    env.setdefault("GCP_PROJECT_ID", "weather-pipeline-498519")
+
+    logger.info("Running dbt run in %s", DBT_PATH)
+    result = subprocess.run(
+        ["dbt", "run"],
+        cwd=str(DBT_PATH),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.stdout:
+        logger.info(result.stdout)
+    if result.returncode != 0:
+        logger.error(result.stderr)
+        raise RuntimeError(f"dbt run failed with exit code {result.returncode}")
+
+
 def notify_on_failure(**context) -> None:
     """
     Called when any upstream task fails (TriggerRule.ONE_FAILED).
@@ -214,10 +268,10 @@ def notify_on_failure(**context) -> None:
 
 with DAG(
     dag_id="weather_pipeline",
-    description="Hourly extraction of weather data from OpenWeatherMap for 10 Indian cities",
+    description="Extract, load, and transform weather data for 10 Indian cities every 6 hours",
     default_args=DEFAULT_ARGS,
     start_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
-    schedule_interval="0 * * * *",      # top of every hour
+    schedule_interval="0 */6 * * *",   # every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
     catchup=False,                       # don't backfill missed runs
     max_active_runs=1,                   # prevent overlapping runs
     tags=["weather", "ingestion", "owm"],
@@ -227,14 +281,16 @@ with DAG(
     doc_md="""
 ## Weather Pipeline DAG
 
-Extracts **current weather** and **5-day forecasts** from OpenWeatherMap
-for 10 Indian cities every hour and lands raw JSON to the data lake.
+Extracts weather from OpenWeatherMap, loads raw JSON to the local lake,
+batch-loads into BigQuery, and runs dbt transforms for Looker Studio.
 
 ### Task flow
 ```
 validate_api_key
     ├── extract_current  ──┐
     └── extract_forecast ──┴── quality_checks
+                                    └── load_to_bigquery
+                                            └── run_dbt_transforms
                                (on_failure) notify
 ```
 
@@ -246,6 +302,7 @@ validate_api_key
 ### Connections needed
 - `OWM_API_KEY` in environment / Airflow Variables
 - `STORAGE_BACKEND` = `local` | `s3` | `gcs`
+- `GCP_PROJECT_ID` and `GOOGLE_APPLICATION_CREDENTIALS` for BigQuery + dbt
     """,
 ) as dag:
 
@@ -271,15 +328,26 @@ validate_api_key
         python_callable=run_quality_checks,
     )
 
+    t_load_bq = PythonOperator(
+        task_id="load_to_bigquery",
+        python_callable=load_to_bigquery_task,
+        execution_timeout=timedelta(minutes=20),
+    )
+
+    t_dbt = PythonOperator(
+        task_id="run_dbt_transforms",
+        python_callable=run_dbt_transforms,
+        execution_timeout=timedelta(minutes=20),
+    )
+
     t_notify = PythonOperator(
         task_id="notify_on_failure",
         python_callable=notify_on_failure,
         trigger_rule=TriggerRule.ONE_FAILED,   # only runs if something failed
     )
 
-    # ── Task dependencies ──────────────────────────────────────────────────────
-    # start → validate → [current, forecast] → quality_checks
-    #                                         → notify (on failure only)
+    # start → validate → [current, forecast] → quality → load_bq → dbt
+    #                                                    → notify (on failure)
 
-    start >> t_validate >> [t_current, t_forecast] >> t_quality
-    [t_current, t_forecast, t_quality] >> t_notify
+    start >> t_validate >> [t_current, t_forecast] >> t_quality >> t_load_bq >> t_dbt
+    [t_current, t_forecast, t_quality, t_load_bq, t_dbt] >> t_notify

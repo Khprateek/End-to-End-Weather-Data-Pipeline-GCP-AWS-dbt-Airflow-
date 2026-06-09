@@ -15,10 +15,10 @@ models:
   weather_pipeline:
     staging:
       +materialized: view
-      +dataset: stg_weather
+      +schema: stg_weather
     intermediate:
       +materialized: table
-      +dataset: stg_weather
+      +schema: stg_weather
     mart:
       +materialized: table
-      +dataset: mart_weather
+      +schema: mart_weather

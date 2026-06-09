@@ -47,7 +47,7 @@ with daily_agg as (
         count(*)                                    as snapshot_count,
         max(ingested_at)                            as last_ingested_at
 
-    from `weather-pipeline-498519`.`stg_weather_stg_weather`.`stg_current_weather`
+    from `weather-pipeline-498519`.`stg_weather`.`stg_current_weather`
     group by 1, 2, 3, 4, 5
 
 )

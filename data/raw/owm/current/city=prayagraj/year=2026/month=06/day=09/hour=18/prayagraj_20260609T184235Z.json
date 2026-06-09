@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 81.85,
+    "lat": 25.45
+  },
+  "weather": [
+    {
+      "id": 803,
+      "main": "Clouds",
+      "description": "broken clouds",
+      "icon": "04n"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 38.18,
+    "feels_like": 36.9,
+    "temp_min": 38.18,
+    "temp_max": 38.18,
+    "pressure": 996,
+    "humidity": 20,
+    "sea_level": 996,
+    "grnd_level": 987
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 3.9,
+    "deg": 232,
+    "gust": 8.22
+  },
+  "clouds": {
+    "all": 72
+  },
+  "dt": 1781030412,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1781048484,
+    "sunset": 1781097766
+  },
+  "timezone": 19800,
+  "id": 1278994,
+  "name": "Allahabad",
+  "cod": 200,
+  "ingested_at": "2026-06-09T18:42:35.899400+00:00",
+  "pipeline_city_query": "Prayagraj"
+}

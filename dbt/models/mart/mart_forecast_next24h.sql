@@ -11,20 +11,20 @@ with hourly as (
         forecast_at_utc,
         forecast_date,
         forecast_hour,
-        forecast_temp_c,
-        forecast_temp_min_c,
-        forecast_temp_max_c,
-        forecast_humidity_pct,
-        forecast_wind_speed_mps,
-        forecast_weather_category,
-        forecast_precip_prob,
-        forecast_rain_3h_mm,
+        temp_c                  as forecast_temp_c,
+        temp_min_c              as forecast_temp_min_c,
+        temp_max_c              as forecast_temp_max_c,
+        humidity_pct            as forecast_humidity_pct,
+        wind_speed_mps          as forecast_wind_speed_mps,
+        weather_category        as forecast_weather_category,
+        precip_probability      as forecast_precip_prob,
+        rain_3h_mm              as forecast_rain_3h_mm,
         ingested_at,
 
         -- flag the peak temperature hour per city per day
         rank() over (
             partition by city_name, forecast_date
-            order by forecast_temp_c desc
+            order by temp_c desc
         ) as peak_temp_rank
 
     from {{ ref('stg_forecast_weather') }}

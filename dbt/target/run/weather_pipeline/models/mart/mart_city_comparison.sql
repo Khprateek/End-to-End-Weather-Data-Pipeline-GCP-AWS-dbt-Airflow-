@@ -2,7 +2,7 @@
   
     
 
-    create or replace table `weather-pipeline-498519`.`stg_weather_mart_weather`.`mart_city_comparison`
+    create or replace table `weather-pipeline-498519`.`mart_weather`.`mart_city_comparison`
       
     
     
@@ -46,7 +46,7 @@ with latest as (
             order by observed_at_utc desc
         ) as rn
 
-    from `weather-pipeline-498519`.`stg_weather_stg_weather`.`stg_current_weather`
+    from `weather-pipeline-498519`.`stg_weather`.`stg_current_weather`
 
 ),
 

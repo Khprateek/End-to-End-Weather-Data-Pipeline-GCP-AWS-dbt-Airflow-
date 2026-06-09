@@ -1,6 +1,6 @@
 
 
-  create or replace view `weather-pipeline-498519`.`stg_weather_stg_weather`.`stg_current_weather`
+  create or replace view `weather-pipeline-498519`.`stg_weather`.`stg_current_weather`
   OPTIONS()
   as -- models/staging/stg_current_weather.sql
 -- ----------------------------------------

@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": 72.6167,
+    "lat": 23.0333
+  },
+  "weather": [
+    {
+      "id": 800,
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01n"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 30.36,
+    "feels_like": 34.67,
+    "temp_min": 30.36,
+    "temp_max": 30.36,
+    "pressure": 1004,
+    "humidity": 65,
+    "sea_level": 1004,
+    "grnd_level": 999
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 5.72,
+    "deg": 281,
+    "gust": 8.03
+  },
+  "clouds": {
+    "all": 7
+  },
+  "dt": 1780870214,
+  "sys": {
+    "country": "IN",
+    "sunrise": 1780878206,
+    "sunset": 1780926831
+  },
+  "timezone": 19800,
+  "id": 1279233,
+  "name": "Ahmedabad",
+  "cod": 200,
+  "ingested_at": "2026-06-07T22:10:12.896555+00:00",
+  "pipeline_city_query": "Ahmedabad"
+}
