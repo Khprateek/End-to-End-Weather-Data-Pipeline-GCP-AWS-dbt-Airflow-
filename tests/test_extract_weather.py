@@ -3,15 +3,11 @@ Unit tests for extract_weather.py
 Run with: pytest tests/ -v
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from data_paths import make_filename, make_partition_path  # noqa: E402
+from src.data_paths import make_filename, make_partition_path  # noqa: E402
 
-from extract_weather import (
+from src.extract_weather import (
     validate_current,
     validate_forecast,
 )

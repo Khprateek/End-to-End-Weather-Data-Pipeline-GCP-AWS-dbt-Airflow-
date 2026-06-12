@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from data_paths import DATA_ROOT, local_file_path, make_storage_key
+from src.data_paths import DATA_ROOT, local_file_path, make_storage_key
 
 load_dotenv()
 
