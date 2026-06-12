@@ -4,7 +4,10 @@ Run with: pytest tests/ -v
 """
 
 import pytest
+import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.data_paths import make_filename, make_partition_path  # noqa: E402
 
 from src.extract_weather import (
