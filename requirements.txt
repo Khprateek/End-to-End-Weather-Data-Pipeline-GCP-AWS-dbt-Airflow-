@@ -142,7 +142,7 @@ more-itertools==10.8.0
 msgpack==1.1.2
 multidict==6.7.1
 networkx
-numpy==2.4.6
+numpy
 opentelemetry-api==1.42.1
 opentelemetry-exporter-otlp==1.42.1
 opentelemetry-exporter-otlp-proto-common==1.42.1
