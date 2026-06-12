@@ -2,7 +2,6 @@
  
 > A production-style data engineering pipeline that extracts real-time weather data for 10 major Indian cities every hour, transforms it through a multi-layer dbt model architecture, and serves analytics-ready tables to a live Looker Studio dashboard — all orchestrated by Apache Airflow running in Docker.
  
-![CI](https://github.com/your-username/end-to-end-weather-pipeline/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Apache_Airflow-2.9-017CEE?logo=apacheairflow&logoColor=white)
 ![dbt](https://img.shields.io/badge/dbt-1.8-FF694B?logo=dbt&logoColor=white)
@@ -18,7 +17,7 @@ Every hour, an Airflow DAG wakes up inside Docker, calls the OpenWeatherMap API 
  
 A historical backfill script using the free Open-Meteo API fills gaps for any dates the pipeline wasn't running.
 # Architecture
-![Architecture Diagram](assets/Cloud_warehouse.drawio.svg)
+![Architecture Diagram](assets/Cloud_warehouse.png)
 # Extractor
 ![Architecture Diagram](assets/openweathermap_extractor_detail.svg)
 ## Overview
@@ -61,7 +60,7 @@ Built as a portfolio project demonstrating real-world data engineering practices
                                └──────────────────────────────────┘
 ```
 
-### Data flow per run
+### Data flow per run 
 1. Airflow triggers at the top of every hour
 2. Pre-flight check validates the API key is live
 3. Current weather and 5-day forecast extracted in parallel for all 10 cities
@@ -69,7 +68,7 @@ Built as a portfolio project demonstrating real-world data engineering practices
 5. Raw JSON landed to `raw/owm/{endpoint}/city={name}/year=/month=/day=/hour/`
 6. Quality gate asserts all 10 cities succeeded before marking run complete
 7. Slack/email alert fires if any task fails
-8. to check the full check : python loaders/pipeline_health_check.py
+8. to check the full check run (data observability script): python loaders/pipeline_health_check.py
 9.   Pipeline has gaps. Run these commands in order:
   a. python src/extract_weather.py
      Extracts raw JSON from OpenWeatherMap for all 10 cities
@@ -121,24 +120,33 @@ Built as a portfolio project demonstrating real-world data engineering practices
 ## Project Structure
 
 ```
-end-to-end-weather-pipeline/
+End-to-end-weather-pipeline/
 │
 ├── dags/
 │   └── weather_pipeline_dag.py     # Airflow DAG (5 tasks, hourly)
 │
 ├── src/
 │   └── extract_weather.py          # Extraction, validation, storage logic
+│   └── data_paths.py
+│   └── test_extract_weather.py     # 13 pytest unit tests
 │
 ├── dbt/                            # (week 3) dbt transformation project
 │   ├── models/
 │   │   ├── staging/                # stg_current_weather, stg_forecast
 │   │   ├── intermediate/           # int_weather_combined
 │   │   └── mart/                   # mart_city_weather_daily
+│   ├── models/
+│   │   ├── generate_schema_name.sql
+│   │   └── test_temperature_in_range.sql
+│   │
 │   ├── tests/
 │   └── dbt_project.yml
 │
+├── loaders/
+│   └── load_to_bigquery.py          # load data to bigQuery
+│   └── pipeline_health_check.py
+|
 ├── tests/
-│   └── test_extract_weather.py     # 13 pytest unit tests
 │
 ├── docs/
 │   └── architecture.png            # Architecture diagram
@@ -231,6 +239,7 @@ pytest tests/ -v
 
 ### 7. Start Airflow with Docker
 
+python loaders/load_to_bigquery.py
 ```bash
 # First time only — initialises DB and creates admin user
 docker-compose up airflow-init
@@ -395,11 +404,11 @@ A single current weather record for Delhi:
 - [x] Historical backfill via Open-Meteo
 - [x] GitHub Actions CI/CD
 - [x] Looker Studio dashboard
-- [ ] Add load_to_bigquery as Airflow DAG task
-- [ ] Deploy Airflow to Cloud Composer (GCP)
+- [x] Add load_to_bigquery as Airflow DAG task
 - [ ] Terraform for infrastructure as code
 - [ ] Great Expectations full validation suite
 - [ ] Slack alerting on pipeline failure
+- [ ] Deploy Airflow to Cloud Composer (GCP)
 ---
 
 ## License
