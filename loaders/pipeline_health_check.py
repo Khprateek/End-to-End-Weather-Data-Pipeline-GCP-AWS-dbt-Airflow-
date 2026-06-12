@@ -448,7 +448,7 @@ def check_city_coverage(client: bigquery.Client, dates: list[str]) -> None:
                 status_line(WARN, stage,
                     f"{len(found)}/10 cities  |  missing: {', '.join(sorted(missing))}")
             else:
-                status_line(OK, stage, f"all 10 cities present")
+                status_line(OK, stage,"all 10 cities present")
 
 # ── STAGE 7: Summary + fix guide ─────────────────────────────────────────────
 
@@ -503,7 +503,7 @@ def run(dates: list[str], stage: str | None = None) -> None:
 
     client = get_bq_client()
     if client is None:
-        print(red(f"\n  Cannot connect to BigQuery"))
+        print(red("\n  Cannot connect to BigQuery"))
         print(yellow(f"  Check that {CREDENTIALS_PATH} exists and is valid"))
         sys.exit(1)
 
