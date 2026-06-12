@@ -188,7 +188,7 @@ requests-toolbelt==1.0.0
 rfc3339-validator==0.1.4
 rich==13.9.4
 rich-argparse==1.8.0
-rpds-py==2026.5.1
+rpds-py
 rsa==4.9.1
 ruff==0.4.4
 s3transfer==0.18.0
