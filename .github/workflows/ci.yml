@@ -68,11 +68,13 @@ jobs:
         run: |
           echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > gcp-credentials.json
 
-      - name: Write dbt profiles
-        run: cp dbt/profiles.yml ~/.dbt/profiles.yml
+      - name: Setup dbt profiles
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json
+        run: |
+          mkdir -p ~/.dbt
+          cp dbt/profiles.yml ~/.dbt/profiles.yml
 
       - name: dbt deps
         working-directory: dbt
