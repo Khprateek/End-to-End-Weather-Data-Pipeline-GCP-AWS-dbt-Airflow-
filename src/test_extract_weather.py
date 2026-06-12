@@ -3,10 +3,8 @@ Unit tests for extract_weather.py
 Run with: pytest tests/ -v
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
