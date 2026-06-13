@@ -20,6 +20,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
     # Pass .env variables into every Airflow container
+    PYTHONPATH: /opt/airflow/src
     OWM_API_KEY: ${OWM_API_KEY}
     STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
     GCP_PROJECT_ID: ${GCP_PROJECT_ID:-weather-pipeline-498519}
